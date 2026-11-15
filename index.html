@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PhishGuard | Intelligent Phishing Detection</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <header>
+        <div class="logo">🛡️ PhishGuard</div>
+
+        <span class="tagline">
+            Intelligent Phishing Detection System
+        </span>
+    </header>
+
+
+    <!-- MAIN CONTENT -->
+    <main>
+
+        <!-- HERO SECTION -->
+        <section class="hero">
+
+            <h1>Protect Yourself from Phishing</h1>
+
+            <p>
+                Scan suspicious URLs and identify potential
+                online security threats.
+            </p>
+
+        </section>
+
+
+        <!-- URL SCANNER -->
+        <section class="scanner">
+
+            <h2>Website Security Scanner</h2>
+
+            <p>
+                Enter a website URL below to analyze its
+                phishing risk.
+            </p>
+
+            <br>
+
+            <div class="input-area">
+
+                <input
+                    type="url"
+                    id="urlInput"
+                    placeholder="Enter website URL (https://example.com)"
+                    autocomplete="url"
+                >
+
+                <button id="scanBtn" type="button">
+                    Scan URL ↗
+                </button>
+
+            </div>
+
+            <p class="hint">
+                Our system checks suspicious keywords,
+                unusual URLs and other risk indicators.
+            </p>
+
+
+            <!-- SCAN RESULT -->
+            <div id="result" class="result hidden">
+
+                <h2 id="status">
+                    Scan Result
+                </h2>
+
+                <p id="scannedUrl"></p>
+
+
+                <!-- RISK SCORE -->
+                <div class="score-container">
+
+                    <div class="score-heading">
+
+                        <span>Risk Score</span>
+
+                        <span id="score">0%</span>
+
+                    </div>
+
+                    <div class="progress">
+
+                        <div id="progressBar"></div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- SECURITY ANALYSIS -->
+                <h3>Security Analysis</h3>
+
+                <ul id="reasons">
+
+                    <li>
+                        Scan a URL to see security analysis.
+                    </li>
+
+                </ul>
+
+                <p class="hint">
+                    Note: This is a heuristic risk assessment,
+                    not a guarantee that a website is safe
+                    or malicious.
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- SCAN HISTORY -->
+        <section class="history">
+
+            <div class="history-heading">
+
+                <h2>Recent Scan History</h2>
+
+                <button
+                    class="clear-btn"
+                    id="clearHistoryBtn"
+                    type="button"
+                >
+                    Clear History
+                </button>
+
+            </div>
+
+
+            <div id="historyList">
+
+                <p class="empty">
+                    No scans performed yet.
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- SAFETY TIPS -->
+        <section class="history">
+
+            <h2>Stay Safe Online</h2>
+
+            <ul id="reasons">
+
+                <li>Never share your passwords on unknown websites.</li>
+
+                <li>Always check the website domain carefully.</li>
+
+                <li>Avoid clicking suspicious links received through messages.</li>
+
+                <li>Do not trust websites only because they use HTTPS.</li>
+
+                <li>Never share your OTP or banking details with unknown sources.</li>
+
+            </ul>
+
+        </section>
+
+    </main>
+
+
+    <!-- FOOTER -->
+    <footer>
+
+        <p>
+            © 2026 PhishGuard | Stay Safe. Stay Secure.
+        </p>
+
+        <p>
+            Intelligent Phishing Detection System
+        </p>
+
+    </footer>
+
+
+    <!-- JAVASCRIPT -->
+    <script src="script.js"></script>
+
+</body>
+
+</html>
