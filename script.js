@@ -1,24 +1,100 @@
 
 document.addEventListener("DOMContentLoaded", function () {
 
-    // ==================================
-    // 1. GET HTML ELEMENTS
-    // ==================================
+    // ==========================================
+    // 1. MOBILE NAVIGATION
+    // ==========================================
 
+    const menuButton = document.getElementById("menuButton");
+    const navLinks = document.getElementById("navLinks");
+
+    if (menuButton && navLinks) {
+        menuButton.addEventListener("click", function () {
+            navLinks.classList.toggle("mobile-open");
+            menuButton.textContent =
+                navLinks.classList.contains("mobile-open") ? "✕" : "☰";
+        });
+
+        navLinks.querySelectorAll("a").forEach(link => {
+            link.addEventListener("click", function () {
+                navLinks.classList.remove("mobile-open");
+                menuButton.textContent = "☰";
+            });
+        });
+    }
+
+    // ==========================================
+    // 2. FRAUD AWARENESS CAROUSEL
+    // ==========================================
+
+    const deck = document.getElementById("fraudDeck");
+    const nextButton = document.getElementById("nextFraud");
+    const counter = document.getElementById("deckCounter");
+
+    if (deck && nextButton && counter) {
+        let cards = Array.from(deck.querySelectorAll(".fraud-card"));
+        let currentIndex = 0;
+        let isAnimating = false;
+
+        function updateCards() {
+            cards.forEach((card, index) => {
+                card.classList.remove(
+                    "active", "stack-1", "stack-2",
+                    "stack-3", "moving-back"
+                );
+
+                card.classList.add(
+                    index === 0 ? "active" : "stack-" + index
+                );
+            });
+
+            counter.textContent =
+                String(currentIndex + 1).padStart(2, "0") +
+                " / " +
+                String(cards.length).padStart(2, "0");
+        }
+
+        nextButton.addEventListener("click", function () {
+            if (isAnimating || cards.length <= 1) return;
+
+            isAnimating = true;
+            const firstCard = cards[0];
+            firstCard.classList.add("moving-back");
+
+            setTimeout(function () {
+                cards.push(cards.shift());
+                deck.appendChild(firstCard);
+
+                currentIndex = (currentIndex + 1) % cards.length;
+
+                updateCards();
+                isAnimating = false;
+            }, 450);
+        });
+
+        updateCards();
+    }
+
+    // ==========================================
+    // 3. GET SCANNER ELEMENTS
+    // ==========================================
+
+    const scanForm = document.getElementById("scanForm");
     const urlInput = document.getElementById("urlInput");
-    const scanBtn = document.getElementById("scanBtn");
-    const resultBox = document.getElementById("result");
+    const scanButton = document.getElementById("scanBtn");
 
-    const status = document.getElementById("status");
-    const scoreText = document.getElementById("score");
-    const progressBar = document.getElementById("progressBar");
-    const scannedUrl = document.getElementById("scannedUrl");
-    const reasonsList = document.getElementById("reasons");
-    const historyList = document.getElementById("historyList");
+    const resultContainer = document.getElementById("resultContainer");
+    const riskPercent = document.getElementById("riskPercent");
+    const riskBadge = document.getElementById("riskBadge");
+    const riskTitle = document.getElementById("riskTitle");
+    const riskDescription = document.getElementById("riskDescription");
+    const riskProgress = document.getElementById("riskProgress");
+    const riskReasons = document.getElementById("riskReasons");
+    const resultNote = document.getElementById("resultNote");
 
-    // ==================================
-    // 2. SCAN HISTORY
-    // ==================================
+    // ==========================================
+    // 4. SCAN HISTORY
+    // ==========================================
 
     let scanHistory = [];
 
@@ -34,12 +110,116 @@ document.addEventListener("DOMContentLoaded", function () {
         scanHistory = [];
     }
 
-    // ==================================
-    // 3. PERSON 2 - DETECTION LOGIC
-    // ==================================
+    // Create history section for the new HTML
+
+    let historySection = document.getElementById("historySection");
+
+    if (!historySection && resultContainer) {
+        historySection = document.createElement("div");
+        historySection.id = "historySection";
+        historySection.className = "scan-history";
+
+        historySection.innerHTML = `
+            <div class="history-heading">
+                <h3>Recent Scan History</h3>
+                <button type="button" id="clearHistoryBtn">
+                    Clear History
+                </button>
+            </div>
+            <div id="historyList"></div>
+        `;
+
+        resultContainer.parentNode.appendChild(historySection);
+    }
+
+    const historyList = document.getElementById("historyList");
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+
+    function showHistory() {
+        if (!historyList) return;
+
+        historyList.replaceChildren();
+
+        if (scanHistory.length === 0) {
+            const empty = document.createElement("p");
+            empty.className = "empty";
+            empty.textContent = "No scans performed yet.";
+            historyList.appendChild(empty);
+            return;
+        }
+
+        scanHistory.forEach(item => {
+            const row = document.createElement("div");
+            row.className = "history-item";
+
+            const details = document.createElement("div");
+
+            const website = document.createElement("p");
+            website.className = "history-url";
+            website.textContent = item.url;
+
+            const date = document.createElement("small");
+            date.textContent = item.date;
+
+            details.append(website, date);
+
+            const risk = document.createElement("strong");
+            risk.textContent = item.score + "% risk";
+
+            risk.style.color =
+                item.category === "high" ? "#ef4444" :
+                item.category === "suspicious" ? "#f59e0b" :
+                "#22c55e";
+
+            row.append(details, risk);
+            historyList.appendChild(row);
+        });
+    }
+
+    function saveHistory(url, result) {
+        scanHistory.unshift({
+            url: url,
+            score: result.score,
+            category: result.category,
+            date: new Date().toLocaleString()
+        });
+
+        scanHistory = scanHistory.slice(0, 10);
+
+        try {
+            localStorage.setItem(
+                "phishguardHistory",
+                JSON.stringify(scanHistory)
+            );
+        } catch (error) {
+            console.warn("History could not be saved:", error);
+        }
+
+        showHistory();
+    }
+
+    function clearHistory() {
+        scanHistory = [];
+
+        try {
+            localStorage.removeItem("phishguardHistory");
+        } catch (error) {
+            console.warn("History could not be cleared:", error);
+        }
+
+        showHistory();
+        updateStatistics();
+    }
+
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener("click", clearHistory);
+    }
+
+    // ==========================================
+    // 5. PERSON 2 - DETECTION LOGIC
+    // ==========================================
 
     function analyzeURL(input) {
-
         let score = 0;
         const reasons = [];
 
@@ -58,7 +238,6 @@ document.addEventListener("DOMContentLoaded", function () {
         let url;
 
         try {
-
             let cleanURL = input.trim();
 
             if (!/^https?:\/\//i.test(cleanURL)) {
@@ -74,34 +253,28 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!url.hostname || !url.hostname.includes(".")) {
                 throw new Error("Invalid hostname");
             }
-
         } catch {
-
             return {
                 valid: false,
                 score: 0,
                 category: null,
                 reasons: ["Please enter a valid website URL."]
             };
-
         }
 
         const hostname = url.hostname.toLowerCase();
         const fullURL = url.href.toLowerCase();
 
-        // CHECK 1: HTTP
-
+        // Check 1: HTTP protocol
         if (url.protocol === "http:") {
             score += 15;
             reasons.push("The URL uses HTTP instead of HTTPS.");
         }
 
-        // CHECK 2: IP ADDRESS
-
+        // Check 2: IP address
         const ipPattern = /^(?:\d{1,3}\.){3}\d{1,3}$/;
 
         if (ipPattern.test(hostname)) {
-
             const validIP = hostname.split(".").every(part => {
                 const number = Number(part);
                 return number >= 0 && number <= 255;
@@ -115,29 +288,25 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        // CHECK 3: SUSPICIOUS KEYWORDS
-
+        // Check 3: Suspicious keywords
         const matchedWords = suspiciousWords.filter(word =>
             fullURL.includes(word)
         );
 
         if (matchedWords.length > 0) {
             score += Math.min(matchedWords.length * 12, 36);
-
             reasons.push(
                 "Suspicious keywords found: " + matchedWords.join(", ")
             );
         }
 
-        // CHECK 4: LONG URL
-
+        // Check 4: Long URL
         if (fullURL.length > 75) {
             score += 10;
             reasons.push("The URL is unusually long.");
         }
 
-        // CHECK 5: SUBDOMAINS
-
+        // Check 5: Multiple subdomains
         const subdomainCount = hostname.split(".").length - 2;
 
         if (subdomainCount >= 3) {
@@ -145,17 +314,15 @@ document.addEventListener("DOMContentLoaded", function () {
             reasons.push("The URL contains multiple subdomains.");
         }
 
-        // CHECK 6: @ SYMBOL
-
-        if (url.href.includes("@")) {
+        // Check 6: @ symbol in URL credentials
+        if (url.username || url.password) {
             score += 25;
             reasons.push(
-                "The URL contains an @ symbol, which may hide the actual destination."
+                "The URL contains credentials before the hostname."
             );
         }
 
-        // CHECK 7: SHORTENED URL
-
+        // Check 7: URL shortener
         if (shortenedDomains.includes(hostname)) {
             score += 25;
             reasons.push(
@@ -163,8 +330,7 @@ document.addEventListener("DOMContentLoaded", function () {
             );
         }
 
-        // CHECK 8: PUNYCODE
-
+        // Check 8: Punycode
         if (hostname.includes("xn--")) {
             score += 25;
             reasons.push(
@@ -173,8 +339,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         score = Math.min(score, 100);
-
-        // RISK CLASSIFICATION
 
         let category;
 
@@ -194,209 +358,173 @@ document.addEventListener("DOMContentLoaded", function () {
 
         return {
             valid: true,
-            score: score,
-            category: category,
-            reasons: reasons,
-            hostname: hostname
+            score,
+            category,
+            reasons,
+            hostname
         };
     }
 
-    // ==================================
-    // 4. DISPLAY SCAN RESULT
-    // ==================================
+    // ==========================================
+    // 6. DISPLAY SCAN RESULT
+    // ==========================================
 
-    function displayResult(url, analysis) {
+    function displayResult(result, enteredURL) {
+        resultContainer.hidden = false;
 
-        resultBox.classList.remove("hidden");
+        riskPercent.textContent = result.score;
+        riskProgress.style.width = "0%";
 
-        scannedUrl.textContent = "Scanned URL: " + url;
+        riskBadge.className = "risk-badge";
+        riskProgress.className = "progress-fill";
 
-        scoreText.textContent = analysis.score + "%";
+        if (!result.valid) {
+            riskBadge.textContent = "INVALID URL";
+            riskBadge.classList.add("high");
 
-        progressBar.style.width = "0%";
-        progressBar.style.background = "";
+            riskTitle.textContent = "Invalid website address";
+            riskDescription.textContent =
+                "Please check the URL and try again.";
 
-        status.className = "";
-
-        if (analysis.category === "low") {
-
-            status.textContent = "✓ LOW RISK";
-            status.classList.add("safe");
-            progressBar.style.background = "#22c55e";
-
-        } else if (analysis.category === "suspicious") {
-
-            status.textContent = "⚠ SUSPICIOUS WEBSITE";
-            status.classList.add("warning");
-            progressBar.style.background = "#f59e0b";
-
+            resultNote.textContent =
+                "A valid URL is required for this demo analysis.";
         } else {
+            if (result.category === "low") {
+                riskBadge.textContent = "LOW RISK";
+                riskBadge.classList.add("low");
+                riskTitle.textContent = "Low risk indicators";
+                riskDescription.textContent =
+                    "Few suspicious characteristics were detected.";
+            } else if (result.category === "suspicious") {
+                riskBadge.textContent = "SUSPICIOUS";
+                riskBadge.classList.add("medium");
+                riskTitle.textContent = "Suspicious URL detected";
+                riskDescription.textContent =
+                    "Some characteristics require extra attention.";
+                riskProgress.classList.add("medium");
+            } else {
+                riskBadge.textContent = "HIGH RISK";
+                riskBadge.classList.add("high");
+                riskTitle.textContent = "High risk indicators";
+                riskDescription.textContent =
+                    "Several suspicious characteristics were detected.";
+                riskProgress.classList.add("high");
+            }
 
-            status.textContent = "⚠ HIGH PHISHING RISK";
-            status.classList.add("danger");
-            progressBar.style.background = "#ef4444";
+            riskDescription.textContent += " Scanned: " + enteredURL;
 
+            resultNote.textContent =
+                "This is a heuristic risk score, not a verified probability " +
+                "or a guarantee that the website is safe or malicious.";
         }
 
-        reasonsList.replaceChildren();
+        riskReasons.replaceChildren();
 
-        analysis.reasons.forEach(reason => {
-
+        result.reasons.forEach(reason => {
             const li = document.createElement("li");
             li.textContent = reason;
-            reasonsList.appendChild(li);
-
+            riskReasons.appendChild(li);
         });
 
-        requestAnimationFrame(() => {
-            progressBar.style.width = analysis.score + "%";
-        });
+        if (result.valid) {
+            requestAnimationFrame(() => {
+                riskProgress.style.width = result.score + "%";
+            });
+        }
     }
 
-    // ==================================
-    // 5. SCAN URL
-    // ==================================
+    // ==========================================
+    // 7. SCAN STATISTICS
+    // ==========================================
 
-    function scanURL() {
+    function updateStatistics() {
+        const stats = {
+            low: 0,
+            suspicious: 0,
+            high: 0
+        };
 
-        const url = urlInput.value.trim();
+        scanHistory.forEach(item => {
+            if (Object.prototype.hasOwnProperty.call(stats, item.category)) {
+                stats[item.category]++;
+            }
+        });
 
-        if (!url) {
-            alert("Please enter a website URL!");
-            return;
-        }
+        const total =
+            stats.low + stats.suspicious + stats.high;
 
-        scanBtn.disabled = true;
-        scanBtn.textContent = "Scanning...";
+        const totalElement = document.getElementById("totalScans");
+        const safeCount = document.getElementById("safeCount");
+        const suspiciousCount = document.getElementById("suspiciousCount");
+        const dangerCount = document.getElementById("dangerCount");
 
-        try {
+        if (!totalElement) return;
 
-            const analysis = analyzeURL(url);
+        totalElement.textContent = total;
+        safeCount.textContent = stats.low;
+        suspiciousCount.textContent = stats.suspicious;
+        dangerCount.textContent = stats.high;
 
-            if (!analysis.valid) {
-                alert(analysis.reasons.join("\n"));
+        document.getElementById("safeBar").style.width =
+            (total ? stats.low / total * 100 : 0) + "%";
+
+        document.getElementById("suspiciousBar").style.width =
+            (total ? stats.suspicious / total * 100 : 0) + "%";
+
+        document.getElementById("dangerBar").style.width =
+            (total ? stats.high / total * 100 : 0) + "%";
+    }
+
+    // ==========================================
+    // 8. SCAN FORM EVENT
+    // ==========================================
+
+    if (scanForm && urlInput && scanButton && resultContainer) {
+        scanForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const enteredURL = urlInput.value.trim();
+
+            if (!enteredURL) {
+                alert("Please enter a website URL.");
                 return;
             }
 
-            displayResult(url, analysis);
+            scanButton.disabled = true;
+            scanButton.textContent = "Analyzing...";
+            resultContainer.hidden = true;
 
-            // SAVE HISTORY
+            setTimeout(function () {
+                try {
+                    const result = analyzeURL(enteredURL);
 
-            scanHistory.unshift({
-                url: url,
-                score: analysis.score,
-                category: analysis.category,
-                date: new Date().toLocaleString()
-            });
+                    displayResult(result, enteredURL);
 
-            scanHistory = scanHistory.slice(0, 10);
+                    if (result.valid) {
+                        saveHistory(enteredURL, result);
+                        updateStatistics();
+                    }
 
-            try {
-                localStorage.setItem(
-                    "phishguardHistory",
-                    JSON.stringify(scanHistory)
-                );
-            } catch (error) {
-                console.warn("Could not save scan history:", error);
-            }
-
-            showHistory();
-
-        } finally {
-
-            scanBtn.disabled = false;
-            scanBtn.textContent = "Scan URL";
-
-        }
-    }
-
-    // ==================================
-    // 6. DISPLAY HISTORY
-    // ==================================
-
-    function showHistory() {
-
-        historyList.replaceChildren();
-
-        if (scanHistory.length === 0) {
-
-            const empty = document.createElement("p");
-            empty.className = "empty";
-            empty.textContent = "No scans performed yet.";
-
-            historyList.appendChild(empty);
-            return;
-        }
-
-        scanHistory.forEach(item => {
-
-            const row = document.createElement("div");
-            row.className = "history-item";
-
-            const details = document.createElement("div");
-
-            const website = document.createElement("p");
-            website.className = "history-url";
-            website.textContent = item.url;
-
-            const date = document.createElement("small");
-            date.textContent = item.date;
-
-            details.append(website, date);
-
-            const risk = document.createElement("strong");
-            risk.textContent = item.score + "% risk";
-
-            if (item.category === "high") {
-                risk.style.color = "#f87171";
-            } else if (item.category === "suspicious") {
-                risk.style.color = "#fbbf24";
-            } else {
-                risk.style.color = "#4ade80";
-            }
-
-            row.append(details, risk);
-            historyList.appendChild(row);
-
+                    resultContainer.scrollIntoView({
+                        behavior: "smooth",
+                        block: "nearest"
+                    });
+                } catch (error) {
+                    console.error("Scan error:", error);
+                    alert("Something went wrong. Please try again.");
+                } finally {
+                    scanButton.disabled = false;
+                    scanButton.textContent = "Analyze URL ↗";
+                }
+            }, 450);
         });
     }
 
-    // ==================================
-    // 7. CLEAR HISTORY
-    // ==================================
-
-    function clearHistory() {
-
-        scanHistory = [];
-
-        localStorage.removeItem("phishguardHistory");
-
-        showHistory();
-    }
-
-    // ==================================
-    // 8. BUTTON EVENTS
-    // ==================================
-
-    scanBtn.addEventListener("click", scanURL);
-
-    urlInput.addEventListener("keydown", function(event) {
-        if (event.key === "Enter") {
-            scanURL();
-        }
-    });
-
-    document.querySelector(".clear-btn")
-        .addEventListener("click", clearHistory);
-
-    // MAKE FUNCTIONS AVAILABLE
-    // FOR EXISTING HTML INLINE HANDLERS
-
-    window.scanURL = scanURL;
-    window.clearHistory = clearHistory;
-
-    // INITIAL HISTORY
+    // ==========================================
+    // 9. INITIALIZE
+    // ==========================================
 
     showHistory();
+    updateStatistics();
 
 });
