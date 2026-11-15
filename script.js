@@ -58,6 +58,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (isAnimating || cards.length <= 1) return;
 
             isAnimating = true;
+
             const firstCard = cards[0];
             firstCard.classList.add("moving-back");
 
@@ -72,11 +73,11 @@ document.addEventListener("DOMContentLoaded", function () {
             }, 450);
         });
 
-        updateCards();
+        if (cards.length > 0) updateCards();
     }
 
     // ==========================================
-    // 3. GET SCANNER ELEMENTS
+    // 3. SCANNER ELEMENTS
     // ==========================================
 
     const scanForm = document.getElementById("scanForm");
@@ -106,15 +107,13 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!Array.isArray(scanHistory)) {
             scanHistory = [];
         }
-    } catch {
+    } catch (error) {
         scanHistory = [];
     }
 
-    // Create history section for the new HTML
-
     let historySection = document.getElementById("historySection");
 
-    if (!historySection && resultContainer) {
+    if (!historySection && resultContainer && resultContainer.parentNode) {
         historySection = document.createElement("div");
         historySection.id = "historySection";
         historySection.className = "scan-history";
@@ -216,7 +215,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ==========================================
-    // 5. PERSON 2 - DETECTION LOGIC
+    // 5. PERSON 2 - URL DETECTION LOGIC
     // ==========================================
 
     function analyzeURL(input) {
@@ -240,25 +239,65 @@ document.addEventListener("DOMContentLoaded", function () {
         try {
             let cleanURL = input.trim();
 
+            // Reject empty input and whitespace
+            if (!cleanURL || /\s/.test(cleanURL)) {
+                throw new Error("Invalid URL");
+            }
+
+            // Add HTTPS if protocol is missing
             if (!/^https?:\/\//i.test(cleanURL)) {
                 cleanURL = "https://" + cleanURL;
             }
 
+            // Reject duplicated URL patterns
+            if (/^https?:\/\/[^/?#]+https?:\/\//i.test(cleanURL)) {
+                throw new Error("Duplicated URL");
+            }
+
             url = new URL(cleanURL);
 
+            // Allow only HTTP and HTTPS
             if (!["http:", "https:"].includes(url.protocol)) {
                 throw new Error("Unsupported protocol");
             }
 
-            if (!url.hostname || !url.hostname.includes(".")) {
+            const hostname = url.hostname.toLowerCase();
+
+            if (!hostname || hostname === "localhost") {
                 throw new Error("Invalid hostname");
             }
-        } catch {
+
+            // Validate IPv4
+            const ipPattern = /^(?:\d{1,3}\.){3}\d{1,3}$/;
+            const isIP = ipPattern.test(hostname);
+
+            if (isIP) {
+                const validIP = hostname.split(".").every(part => {
+                    const number = Number(part);
+                    return number >= 0 && number <= 255;
+                });
+
+                if (!validIP) {
+                    throw new Error("Invalid IP address");
+                }
+            } else {
+                // Validate domain name
+                const domainPattern =
+                    /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+
+                if (!domainPattern.test(hostname)) {
+                    throw new Error("Invalid domain");
+                }
+            }
+
+        } catch (error) {
             return {
                 valid: false,
                 score: 0,
                 category: null,
-                reasons: ["Please enter a valid website URL."]
+                reasons: [
+                    "Invalid URL. Please enter a complete and valid website address."
+                ]
             };
         }
 
@@ -275,17 +314,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const ipPattern = /^(?:\d{1,3}\.){3}\d{1,3}$/;
 
         if (ipPattern.test(hostname)) {
-            const validIP = hostname.split(".").every(part => {
-                const number = Number(part);
-                return number >= 0 && number <= 255;
-            });
-
-            if (validIP) {
-                score += 25;
-                reasons.push(
-                    "The website uses an IP address instead of a domain name."
-                );
-            }
+            score += 25;
+            reasons.push(
+                "The website uses an IP address instead of a domain name."
+            );
         }
 
         // Check 3: Suspicious keywords
@@ -314,7 +346,7 @@ document.addEventListener("DOMContentLoaded", function () {
             reasons.push("The URL contains multiple subdomains.");
         }
 
-        // Check 6: @ symbol in URL credentials
+        // Check 6: URL credentials
         if (url.username || url.password) {
             score += 25;
             reasons.push(
@@ -370,6 +402,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // ==========================================
 
     function displayResult(result, enteredURL) {
+        if (!resultContainer) return;
+
         resultContainer.hidden = false;
 
         riskPercent.textContent = result.score;
@@ -395,6 +429,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 riskTitle.textContent = "Low risk indicators";
                 riskDescription.textContent =
                     "Few suspicious characteristics were detected.";
+
             } else if (result.category === "suspicious") {
                 riskBadge.textContent = "SUSPICIOUS";
                 riskBadge.classList.add("medium");
@@ -402,6 +437,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 riskDescription.textContent =
                     "Some characteristics require extra attention.";
                 riskProgress.classList.add("medium");
+
             } else {
                 riskBadge.textContent = "HIGH RISK";
                 riskBadge.classList.add("high");
@@ -458,21 +494,29 @@ document.addEventListener("DOMContentLoaded", function () {
         const suspiciousCount = document.getElementById("suspiciousCount");
         const dangerCount = document.getElementById("dangerCount");
 
-        if (!totalElement) return;
+        if (totalElement) totalElement.textContent = total;
+        if (safeCount) safeCount.textContent = stats.low;
+        if (suspiciousCount) suspiciousCount.textContent = stats.suspicious;
+        if (dangerCount) dangerCount.textContent = stats.high;
 
-        totalElement.textContent = total;
-        safeCount.textContent = stats.low;
-        suspiciousCount.textContent = stats.suspicious;
-        dangerCount.textContent = stats.high;
+        const safeBar = document.getElementById("safeBar");
+        const suspiciousBar = document.getElementById("suspiciousBar");
+        const dangerBar = document.getElementById("dangerBar");
 
-        document.getElementById("safeBar").style.width =
-            (total ? stats.low / total * 100 : 0) + "%";
+        if (safeBar) {
+            safeBar.style.width =
+                (total ? stats.low / total * 100 : 0) + "%";
+        }
 
-        document.getElementById("suspiciousBar").style.width =
-            (total ? stats.suspicious / total * 100 : 0) + "%";
+        if (suspiciousBar) {
+            suspiciousBar.style.width =
+                (total ? stats.suspicious / total * 100 : 0) + "%";
+        }
 
-        document.getElementById("dangerBar").style.width =
-            (total ? stats.high / total * 100 : 0) + "%";
+        if (dangerBar) {
+            dangerBar.style.width =
+                (total ? stats.high / total * 100 : 0) + "%";
+        }
     }
 
     // ==========================================
@@ -500,6 +544,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     displayResult(result, enteredURL);
 
+                    // Save only valid URLs
                     if (result.valid) {
                         saveHistory(enteredURL, result);
                         updateStatistics();
@@ -509,9 +554,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         behavior: "smooth",
                         block: "nearest"
                     });
+
                 } catch (error) {
                     console.error("Scan error:", error);
                     alert("Something went wrong. Please try again.");
+
                 } finally {
                     scanButton.disabled = false;
                     scanButton.textContent = "Analyze URL ↗";
